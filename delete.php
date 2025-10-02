@@ -1,19 +1,26 @@
 <?php
+session_start();
 include 'config.php';
 
-// Check if ID is provided
-if(!isset($_GET['id']) || empty($_GET['id'])){
-    die("❌ No post ID provided. Go back to <a href='index.php'>index</a>.");
+// Only logged-in users can delete
+if(!isset($_SESSION['username'])){
+    header("Location: login.php");
+    exit;
 }
 
+if(!isset($_GET['id'])){
+    die("❌ No post ID provided.");
+}
 $id = (int)$_GET['id'];
 
-// Delete post
-$sql = "DELETE FROM posts WHERE id=$id";
-
-if(mysqli_query($conn, $sql)){
-    echo "✅ Post deleted successfully! <a href='index.php'>Go back</a>";
+// Delete
+$stmt = $conn->prepare("DELETE FROM posts WHERE id=?");
+$stmt->bind_param("i", $id);
+if($stmt->execute()){
+    header("Location: index.php");
+    exit;
 } else {
-    echo "❌ Error: " . mysqli_error($conn);
+    echo "❌ Error: " . $stmt->error;
 }
+$stmt->close();
 ?>

@@ -1,39 +1,72 @@
 <?php
+session_start();
 include 'config.php';
 
-// Check if ID is provided
-if(!isset($_GET['id']) || empty($_GET['id'])){
-    die("❌ No post ID provided. Go back to <a href='index.php'>index</a>.");
+// Only logged-in users can edit
+if(!isset($_SESSION['username'])){
+    header("Location: login.php");
+    exit;
 }
 
-$id = (int)$_GET['id']; // force it to be number
+if(!isset($_GET['id'])){
+    die("❌ No post ID provided.");
+}
+$id = (int)$_GET['id'];
 
-// Fetch post details
-$result = mysqli_query($conn, "SELECT * FROM posts WHERE id=$id");
-$post = mysqli_fetch_assoc($result);
+// Fetch post
+$stmt = $conn->prepare("SELECT * FROM posts WHERE id=?");
+$stmt->bind_param("i", $id);
+$stmt->execute();
+$post = $stmt->get_result()->fetch_assoc();
+$stmt->close();
 
 if(!$post){
-    die("❌ Post not found. Go back to <a href='index.php'>index</a>.");
+    die("❌ Post not found.");
 }
 
-// Update logic
+// Update
 if(isset($_POST['update'])){
     $title = $_POST['title'];
     $content = $_POST['content'];
 
-    $sql = "UPDATE posts SET title='$title', content='$content' WHERE id=$id";
-    if(mysqli_query($conn, $sql)){
-        echo "✅ Post updated successfully! <a href='index.php'>Go back</a>";
+    $stmt = $conn->prepare("UPDATE posts SET title=?, content=? WHERE id=?");
+    $stmt->bind_param("ssi", $title, $content, $id);
+    if($stmt->execute()){
+        header("Location: index.php");
+        exit;
     } else {
-        echo "❌ Error: " . mysqli_error($conn);
+        $error = "❌ Error: " . $stmt->error;
     }
+    $stmt->close();
 }
 ?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Edit Post</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container my-5 p-4 bg-white rounded shadow-sm">
 
-<h1>Edit Post</h1>
-<form method="POST">
-  <input type="text" name="title" value="<?php echo htmlspecialchars($post['title']); ?>" required><br><br>
-  <textarea name="content" required><?php echo htmlspecialchars($post['content']); ?></textarea><br><br>
-  <button type="submit" name="update">Update</button>
-</form>
-<a href="index.php">Back to posts</a>
+  <h2>Edit Post</h2>
+  <?php if(!empty($error)) echo "<div class='alert alert-danger'>$error</div>"; ?>
+
+  <form method="POST">
+    <div class="mb-3">
+      <label class="form-label">Title</label>
+      <input type="text" name="title" value="<?php echo htmlspecialchars($post['title']); ?>" class="form-control" required>
+    </div>
+    <div class="mb-3">
+      <label class="form-label">Content</label>
+      <textarea name="content" class="form-control" rows="5" required><?php echo htmlspecialchars($post['content']); ?></textarea>
+    </div>
+    <button type="submit" name="update" class="btn btn-warning">Update</button>
+    <a href="index.php" class="btn btn-secondary">Cancel</a>
+  </form>
+
+</div>
+</body>
+</html>
+
