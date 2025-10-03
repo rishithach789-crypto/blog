@@ -3,25 +3,40 @@ session_start();
 include 'config.php';
 
 if(isset($_POST['login'])){
-    $username = $_POST['username'];
-    $password = $_POST['password'];
+    $username=$_POST['username'];
+    $password=$_POST['password'];
 
-    $result = mysqli_query($conn, "SELECT * FROM users WHERE username='$username'");
-    $user = mysqli_fetch_assoc($result);
+    $stmt=$conn->prepare("SELECT id,username,password,role FROM users WHERE username=?");
+    $stmt->bind_param("s",$username);
+    $stmt->execute();
+    $result=$stmt->get_result();
+    $user=$result->fetch_assoc();
 
-    if($user && password_verify($password, $user['password'])){
-        $_SESSION['username'] = $user['username'];
-        header("Location: index.php");
+    if($user && password_verify($password,$user['password'])){
+        $_SESSION['username']=$user['username'];
+        $_SESSION['role']=$user['role'];
+        header("Location: index.php");exit;
     } else {
-        echo "❌ Invalid login!";
+        $error="Invalid credentials!";
     }
 }
 ?>
-
-<h1>Login</h1>
-<form method="POST">
-  <input type="text" name="username" placeholder="Username" required><br><br>
-  <input type="password" name="password" placeholder="Password" required><br><br>
-  <button type="submit" name="login">Login</button>
-</form>
-<a href="register.php">New user? Register here</a>
+<!DOCTYPE html>
+<html>
+<head>
+<title>Login</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+<div class="container my-5 p-4 bg-white rounded shadow-sm">
+  <h2>Login</h2>
+  <?php if(!empty($error)) echo "<div class='alert alert-danger'>$error</div>"; ?>
+  <form method="POST">
+    <div class="mb-3"><label class="form-label">Username</label><input type="text" name="username" class="form-control" required></div>
+    <div class="mb-3"><label class="form-label">Password</label><input type="password" name="password" class="form-control" required></div>
+    <button type="submit" name="login" class="btn btn-primary">Login</button>
+  </form>
+  <a href="register.php">New user? Register</a>
+</div>
+</body>
+</html>
